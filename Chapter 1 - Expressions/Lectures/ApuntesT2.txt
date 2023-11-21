@@ -1,0 +1,110 @@
+===================================================
+===== Teoria de los Lenguajes de Programacion =====
+===================================================
+
+ Lenguaje WHILE -> Turing Completo, Sintaxis abastracta
+ --------------
+  Sintaxis concreta. (Construir arboles de parse unicos para el contexto)
+  Sintaxis abstracta. (Construir el arbol de parse que queramos)
+   |-> Numerales = Literal numerico
+   |-> Variables
+   |-> Aexp = Expresiones aritmeticas 
+   	//Basic n,x //Composite +,*,-
+   |-> Bexp = Expresiones Booleanas 
+   	//Basic true,false,equal,less_than // Composite not,and
+   |-> Stm = Sentencias sobre estamentos
+  
+  El skip es necesario pq el if siempre tiene un else
+ 
+ Funciones Semanticas.	 f :: Sintaxis -> Significado (Semantica Dinamica)
+ ---------------------
+  |-> Sintacticamente correcto
+  |-> Semanticamente correcto (Semantica Estatica | comprobada antes de ejecutar)
+  	(Errores de Tipo, de indexacion, ...)
+  
+  Parentesis semanticos -> [] es la cadena tal cual, su sintaxis
+  	
+  EJEMPLO.	N : Num -> Z		
+  --------
+  // Recursividad izquierda		// Recursividad derecha
+   N[0] = 0				 N[0] = 0
+   N[1] = 1				 N[1] = 1
+   N[n0] = 2 * N[n] 			 N[0n] = 2^size(n) + N[n] ¿?
+   N[n1] = 2 * N[n] + 1		 N[1n] = ¿?
+  
+  
+  Demostracion por induccion // para todo n perteneciente al conjunto . P(n)
+  --------------------------
+   |-> Demostrar el caso base y el paso inductivo (como se construye)
+   |-> Hipotesis de induccion es P(n) tras haberlo demostrado
+   
+   Estandar para probar A = B -> sequencia de expresiones desde A hasta B
+   
+   Funcion parcial -> No definida para todos los valores del conjunto (no total)
+   	y que la salida (imagen) sea unica "!" para cada entrada (preimagen)
+   Las distintas entradas pueden originar el mismo valor, pero una misma entrada 
+   no puede originar diferentes valores 	
+   	   
+   Demostramos que es unica si en cada paso solamente hemos podido aplicar una 
+   unica regla semantica
+   
+  Pasos a seguir
+  --------------
+   1. Definir la sintaxis abstracta
+   2. Definir una f. semantica
+   3. Enunciar P. Inductiva Estr
+   4. Demostrar propiedad
+   
+   Ejercicio 2
+   -----------
+   1) 
+   
+   S :: = epsilon
+   	   | S1 S2	--Juxtaposicion
+   	   | (S)
+   2)
+    
+   P :: S -> (Int, Int)
+   P [epsilon] = (0,0)
+   P [S1 S2] = P [S1] + P [S2]
+   P [(S)] = P[S] + (1,1)
+   
+   -- SI NO TENGO SUMA DE TUPLAS
+   P [S1 S2] = (l1 + l2 , r1 + r2)
+   	where 
+   		P[S1] = (l1 , r1)
+   		P[S2] = (l2 , r2)
+   		
+   3)
+   
+   P(epsilon) 
+   paratodo s1,s2 perteneciente a S -> P(s1) && P(s2) => P(s1,s2) 
+   paratodo s perteneciente a S -> P(s) => P((s)) 
+     
+   Bucle si s1 o s2 es epsilon // Hace que no crezca de capa
+   
+   ===============================================================
+   Version corregida
+   
+   1)
+   
+   S :: = epsilon
+   	| S1 (S2)	--Tira mas grande seguro pq se añade ()
+   	
+   2)
+   
+   P :: S -> (Int, Int)
+   P [epsilon] = (0,0)
+   P [S1(S2)] = P[S1] + P[S2] + (1,1)
+   
+   3)
+   
+   P(epsilon) 
+   paratodo s1, s2 pertencecientes a S -> P(S1) && P(S2) => P(S1(S2))
+   
+   
+   
+     
+     
+      
+    
