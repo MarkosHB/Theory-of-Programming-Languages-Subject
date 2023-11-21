@@ -1,0 +1,71 @@
+===================================================
+===== Teoria de los Lenguajes de Programacion =====
+===================================================
+
+ Sintaxis (Gramatica)
+ ---------------------
+ S ::= A
+ S ::= A;S
+ A ::= B := B
+ B ::= variable
+ 
+ ¿Semantica? -> Intercambio valor 2 variables
+   |-> Encontrar el significado de cada terminal (:=, ;)
+   |-> Para cada constructor, un significado  
+   
+   *** Orientada a la sintaxis y Composicional ***
+   
+ 
+ Estilos Semanticos
+ ------------------
+  |-> Semantica Operacional.  (Para cada constructor, como se ejecuta)
+  	; separa sentencias sequenciales
+  	:= sobreescribe valores de una variable a la otra
+  	
+  |-> Semantica Denotacional. (Una funcion para cada sentencia)
+  	Dirigida por la sintaxis
+  	Composicionalidad
+  	
+  |-> Semantica Axiomatica. (No estado concreto, sino conjuntos de estados)
+  	Logica de Predicados - Aritmetica - Algo mas...
+  
+ Aserto: Enunciado (Contrato) acerca del estado que debe ser cierto
+ ------
+  |-> Delante de la sentencia = Precondicion --> {P}	//Entradas
+  |-> Detras de la sentencia = Postcondicion --> {Q}	//Resultados
+  
+  Tambien se pueden colocar asertos dentro del programa
+ 
+  Explican las propiedades del codigo ignorando aspectos de la ejecucion
+ 
+  |-> Sentencias que tienen punto y coma (Compuestas por varias sentencias)
+  	Introducir asertos para cada sentencia
+  	{P} - S1 - {R} - S2 - {Q}
+  		 -------
+  		  Nueva
+  		  
+  Hay que hacer dos demostraciones: {P} S1 {R} && {R} S2 {Q}
+  Ejemplo: {P}S1{R'} && {R}S2{Q} hay que buscar que R'=>R
+   
+  Los estados son nombres simbolocos (mejor que la operacional)
+   
+ Tripletas de Hoare
+ ------------------
+  {P} S {Q} //Solo si S termina (Correccion parcial)
+   
+  Correccion total:
+  Expresion extrictamente dependiente que fuera inferiormente acotada 
+ 
+  Dijkstra -> Conociendo el codigo y la postcondicion, calculo la precondicion
+  	Obtiene la precondicion mas debil (weakest precondition)
+  Tambien se puede obtener el Codigo a partir de la postcondicion 
+  	(no siempre funciona)
+  
+  Ejemplo:
+  
+  	{I, b} S {I} 		//Precondicion para el bucle
+  -----------------------
+  {I} while b do S {¬b, I} 	//Postcondicion al acabar
+  
+  
+  	
