@@ -1,0 +1,211 @@
+===================================================
+===== Teoria de los Lenguajes de Programacion =====
+===================================================
+
+ Semantica estructural
+ ---------------------
+  Estados intermedio
+  Estados final
+  Estados bloqueado
+  
+  Secuencia infinita
+  
+ Principio de Induccion
+ ----------------------
+  |-> Cierta para secuencias de derivacion de longitud 0
+  |-> Cierta para longitud n, comprobar para longitud n+1
+ 
+ <S1;S2,s> =>k s''
+ La composicion termina pq primero acaba S1 en k1 pasos y luego S2 en k2 pasos
+ 	k = k1 + k2 	<S1,s> =>k1 s0 	<S2,s> =>k2 s''
+ 
+ Demostracion Splitting
+ ----------------------
+  |-> caso k=0
+  
+  	Si 		<S1;S2,s> =>0 s''
+  	entonces  	Falso => s'' 		//Hipotesis falsa, se deduce todo
+  
+  |-> caso k = n + 1
+      --------------
+       
+        Suposicion			<S1;S2,s> =>n+1 s''
+        debe haber un gamma tal que	<S1;S2,s> => gamma =>n s''
+        
+        gamma solo puede obtenerse por [comp_sos i]
+        ------------------------------------------- 
+         |-> caso s1 es atomica [comp_sos 2]
+         	gamma = <S2,s0> , reemplazando
+         	<S1;S2,s> => <S2;S0> =>n s''
+         	
+         	<S1,s> =>1 s0
+         	<S2,s0> =>n s''
+         
+         |-> caso s2 es compuesta [comp_sos 1]
+         	gamma = <S1';S2,s0> , reemplazando
+         	<S1;S2,s> => <S1';S2,s0> =>n s''
+         		     |---------| 
+         		     Sec long. n
+         	
+         	Aplicando HI:
+         	<S1',s0> =>n1 sn
+         	<S2,sn> =>n2 s''
+         	n = n1 + n2
+         	
+         	De la premisa de [comp_sos 1]
+         	<S1,s> => <S1',s0> =>n1 sn
+         	<S1,s> =>1+n1 sn
+         	n = (n1 + n2) + 1
+         	
+         	Por lo tanto:
+         		<S1,s> =>1+n1 sn
+         		<S2,sn> =>n2 s''
+         		n = n1 + n2 --> n1 + n2 + 1 = n+1
+         		     
+         
+ Demostracion: Induccion sobre la longitud de la derivacion (k) // No interferencia
+ --------------------------------------------------------------
+  |-> caso k=0
+  
+  	Si 		<S1;S2,s> =>0 s''
+  	entonces  	Falso => s'' 		//Hipotesis falsa, se deduce todo
+      
+  |-> caso k = n+1
+  	
+  	Supongamos		<S1,s> =>n+1 s'
+  	Sea gamma tal que       <S1,s> => gamma =>n s'
+  	
+  	 |-> caso s1 es atomica (n=0)
+  		<S1,s> => s'
+  	     Aplicando [comp_sos 2]
+  	        <S1;S2,s> => <S2,s'>
+  	        
+  	 |-> caso s1 es compuesta (n>0)
+  	 	<S1,s> => gamma =>n s'
+  	 	
+  	     Gamma debe ser intermedia, de la forma <S1',s0>
+  	     	<S1,s> => <S1',s0> =>n s'
+  	     		  |-------------| 
+         		    Sec long. n
+         		    
+	     Aplicando HI:
+	     	<S1';S2,s0> =>n <S2,s'>
+	     	
+	     Aplicando [comp_sos 1]
+	     	   <S1,s> => <S1',s0>
+	     	------------------------
+	     	<S1;S2,s> => <S1';S2,s0>
+	     
+	     Por lo tanto:
+	     	<S1,S2,s> =>n+1 <S2,s'> 	        	
+         
+  Equivalentes si: Las dos acaban en el mismo gamma o se bloquean en el mismo gamma
+  
+  S = S;skip = skip;S
+  -------------------
+    |-> Si <S;skip,s> =>* s'
+	entonces <S,s> =>* s'    
+        
+        Asumo que <S;skip,s> =>* s'
+        Por el lema de Splitting:
+        <S,s> =>* s0
+        <skip,s0> =>* s'
+        
+        Aplicando [skip_sos]
+        s0 = s'
+        
+        Reemplazando
+        <S,s> =>* s'
+    
+    |-> Si <S,s> =>* s'
+    	entonces <S;skip,s> =>* s'
+    	
+    	Asumo que <S,s> =>* s'
+    	Aplicando no interferencia:
+    	<S;skip,s> =>* <skip,s'>
+    	
+    	Aplicando el [skip_sos]
+    	<S;skip,s> =>* s'
+ 
+  (S1;S2);S3 = S1;(S2;S3)
+  -----------------------
+    |-> Si <(S1;S2);S3,s> =>* s'
+    	entonces <S1;(S2;S3)> =>* s'
+    	
+    	Asumo que <(S1;S2);S3,s> =>* s'
+    	
+    	Aplicando Splitting:
+    	<(S1;S2),s> =>* s0
+    	<S3,s0> =>* s'
+    	
+    	Otra vez Splitting:
+    	<S1,s> =>* s1
+    	<S2,s1> =>* s0
+    	<S3,s0> =>* s'
+    	
+    	Aplicando No interferencia a S2,S3
+    	<S1,s> =>* s1
+    	<S2;S3,s1> =>* <S3, s0>
+    	
+    	Dado que <S3,s0> =>* s'
+    	<S2;S3,s1> =>* s'
+    	
+	Aplicar No inferencia a S1,(S2;S3)
+	<S1;(S2;S3),s> =>* <S2;S3,s1>
+	
+	Como <S2;S3,s1> =>* s'
+	<S1;(S2;S3),s> =>* s'
+    	       
+  Secuencia infinita
+  ------------------
+    |-> S1; <S;skip,s> no termina 
+    	entonces <S,s> no termina
+    	
+    |-> Si (S1,S2);S3 no termina
+    	entonces S1;(S2;S3) no termina
+        
+  Lenguaje determinista
+  ---------------------
+    |-> Si <S,s> => gamma
+   	Si <S,s> => gamma'
+   	entonces gamma = gamma'
+   	
+   	caso base = axiomas
+   	 |-> caso [ass_sos]
+   	 	Asumo <x:=a,s> => gamma
+   	 	Luego gamma = s[x->A[a]s]
+   	 	Asumo <x:=a,s> => gamma'
+   	 	por [ass_sos] gamma' = s[x->A[a]s] = gamma'
+   	 
+   	 |-> caso [while_sos]
+   	 	Asumo <while b do S,s> => gamma
+   	 	luego gamma = <if b then (S; while b do S) else skip,s>
+   	 	Asumo <while b do S,s> => gamma'
+   	 	luego gamma' = gamma
+   	 
+   	caso inductivo = reglas
+   	 |-> caso [comp_sos 2]
+   	 	Asumo <S1;S2,s> => gamma
+   	 	Por [comp_sos 2]
+   	 	     <S1,s> => s'
+   	 	----------------------	   	
+   	 	 <S1;S2,s> => <S2,s'>
+   	 	
+   	 	luego gamma = <S2,s'>
+   	 	Asumo <S1;S2,s> => gamma'
+   	 	Por [comp_sos 2]
+   	 	    <S1,s> => s0
+   	 	-----------------------
+        	 <S1,S2,s0> => <S2,s0>
+        	 
+        	Aplicando HI
+        	<S1,s> => s'
+        	<S1,s> => s0
+        	s' = s0
+        	
+        	Reemplazando 
+        	<S1;S2,s> => <S2,s'>
+        		     |-----|
+        		      gamma'
+        	
+        	
