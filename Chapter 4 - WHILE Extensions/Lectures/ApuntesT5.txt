@@ -1,0 +1,201 @@
+===================================================
+===== Teoria de los Lenguajes de Programacion =====
+===================================================
+
+ Sentencia par (paralelismo)
+ ---------------------------
+  |-> Semantica natural: No es posible hacerlo (no intercala pasos)
+  |-> Semantica estructural operacional:
+  
+  Sentencia no atomica con S1
+  [par_sos 1] 
+  		< S1, s > => < S1', s' >
+  	-----------------------------------------
+  	  < S1 par S2, s> => < S1' par S2, s' >
+  
+  Sentencia atomica con S1
+  [par_sos 1]
+  
+  		 < S1, s > => s'
+  	----------------------------------
+  	  < S1 par S2, s> => < S2, s' >
+  
+  
+  Nuevas sentencias al While
+  --------------------------
+   |-> Entorno, localizacion (en memoria), almacenamiento // Por las var. locales
+   |-> El nombre de la variable no es suficiente para acceder a su contenido 
+   	State no nos vale ya, necesitamos su posicion en la memoria
+   	
+  Bloques => begin Dv S end
+  -------
+  
+   Ejemplo 1
+   ---------
+   x := 5;	// Asignacion (sentencia)
+   y := 7;
+   begin
+   	var x := 6;	// Declaracion 
+   	var y := 8;
+   	x := 11; 	// Se refiere a la x de dentro del bloque
+   end
+   
+   Ejemplo 2
+   ---------
+   begin 
+   	var x1 := a1;
+   	var x2 := a2;
+   	...
+   	var xn = an;
+   	S;
+   end
+   
+   Ejemplo 3
+   ---------  
+   begin
+  	var x := x + 1;	// Se refiere a la global
+  	var y := 2 * x;
+  	...
+  	let x,y := x+1, 2*x;	// Secuencial o paralelo segun la implementacion
+   end
+  
+  =============================================================================== 
+   
+   1) Declarar e inicializar variables locales
+   2) Ejecutar el cuerpo S
+   3) Restaurar variables ocultadas
+   
+   [none Dv]
+   
+  	 ------------------------
+  	  < Epsilon , s > -> s
+    
+    
+   [var Dv]
+   
+  	    < Dv , s[x->A[a]s] > -> s'
+  	 -------------------------------
+  	  < var x := a ; Dv , s > -> s' 
+   
+  
+   Semantica
+  
+      < Dv , s > ->Dv s'	< S, s' > -> s''
+     ---------------------------------------------
+       < begin Dv S end, s > -> s''[LV(Pv)->s]
+  
+  
+   Conocemos: 			s , s'' , Dv -> LV (Dv)
+   Quiero construir:		s'''
+   Definimos
+  	 LV :: Dv -> P(var)
+  	 LV (Epsilon) = vacio
+  	 LV (var x := a; Dv) = {x} U LV (Dv)
+  
+  ***
+   State -> P(var) -> State -> State
+   final      LV     inicial   rest
+  ***
+  
+   Nuevo update =>   s'[X->s] 	// Antiguo update =>   s [x->z]
+  
+   y = { s y 	si y pertenece X
+       { s' y 	si no pertenece X
+  
+ ================================================================================
+
+  Procedimientos
+  --------------
+   Pname != Var implica que se pueden llamar igual una variable que un proc.
+   
+   Env_p = Pname -> Stm	// Enviroments = conjuntos de ligaduras
+   	  (nombre)  (cuerpo)	// Ambito (scope) = Disciplina que decide como 
+   	  						se gestiona el ambito
+   
+   Ejemplo 1
+   ---------
+    proc s is S
+    var s := 3;
+  
+  |-> Estatico => Crear lineas de relacion y seguirlas segun el ambito (ya creado)
+  |-> Dinamico => Se coge el ultimo valor ejecutado de la var/proc.
+  
+  |-> Diferencia entre state (total) y env (parcial) 
+  	Se puede llamar a un procedimiento que no ha sido definido
+  
+  Dp ::= proc p is S ; Dp | Epsilon
+  upd_p ::= Dp -> Env_p -> Env_p
+  	upd_p (proc p is S ; Dp env_p) = upd_p (Dp, env_p[p->S])
+  	upd_p (Epsilon, env_p) = env_p
+  
+  Dar semantica (en dinamico)
+  ---------------------------
+  1) Procesar las variables
+  2) Proc. locales
+  3) Ejecutar el cuerpo
+  4) Restaurar
+  
+  // Los updates/states se comportan como pila (no se vacian, solo crecen)
+  
+   		 <Dv, s> -> s' , updp(Pp, env_p) |- <S, s'> -> s''
+   [block_ns] 	----------------------------------------------------
+   		   env_p |- <begin Pv Pp S, s> -> s''[DV(Pv) -> s]
+   
+   		      env_p |- <S,s> -> s'
+   [call_ns]    -------------------------------    // Es recursivo (mismo env)
+  		   env_p |- <call p, s> -> s'
+  
+  
+  Dar semantica (mixto -> Var dinamicas && Proc estaticos)
+  --------------------------------------------------------
+   Env_p = Pname -> (Stm, Env_p) // Env_p es el mismo de la definicion
+  
+   // El begin end no cambia, solo la llamada
+   
+     		 <Dv, s> -> s' , updp(Pp, env_p) |- <S, s'> -> s''
+   [block_ns] 	----------------------------------------------------
+   		   env_p |- <begin Pv Pp S, s> -> s''[DV(Pv) -> s]
+  
+   		      env_p' |- <S,s> -> s'
+   [call_ns]    ----------------------------------   where env_p p = (S, env_p')
+  		    env_p |- <call p, s> -> s'
+  
+  
+   |-> Perdemos la recursividad (solo se mira en la pila de ti para abajo, tu no)
+   	|-> Solo podemos ver proc. que ya estan definidos
+   |-> Si añadimos una ligadura [p->(S, env_p')] ya es recursiva (a la vez)
+   
+  Dar semantica (todo estatico)
+  -----------------------------
+   
+   Ejemplo:
+   
+   	begin 
+   		x:=5;
+   		proc p is x:=2*x;
+   		
+   		begin
+   			var x:=23;
+   			
+   			call p;
+   			x:=11-x
+   		end
+   	end
+   
+   ***
+    State = Var -> Loc -> Z  // Se parte en dos (composicion => sto o env_v)
+    Env_v = Var -> Loc  // Location es un entero que es la pos de memoria
+    Store = Loc -> Z 	// Z es el valor de la variable en su enviroment
+   ***
+  
+  S : State = Var -> Z
+  S x ->
+  env_v :: Var -> Loc
+  sto :: Loc -> Z
+  (sto env_v) x ->  
+  
+  |-> Asignacion en memoria como una pila // next => Registro apunta a top stack
+  	|-> new aumenta el tope de la pila  
+  
+  
+   
