@@ -15,7 +15,6 @@ import           State
 
 
 import           Test.HUnit hiding (State)
-import           Data.List
 
 -- |----------------------------------------------------------------------
 -- | Exercise 1 - Semantics of binary numerals
@@ -47,13 +46,13 @@ six = B (B (MSB I) I) O
 -- | define a semantic function 'binVal' that associates
 -- | a number (in the decimal system) to each binary numeral.
 
-bitVal :: Bit -> Integer
+bitVal :: Bit -> Z
 bitVal O = 0
 bitVal I = 1
 
 binVal :: Bin -> Z
 binVal (MSB b) = bitVal b
-binVal (B xs b) = binVal xs * 2 + bitVal b
+binVal (B bin bit) = binVal bin * 2 + bitVal bit
 
 -- | Test your function with HUnit.
 
@@ -64,61 +63,39 @@ testBinVal = test ["value of zero"  ~: 0 ~=? binVal zero,
                    "value of six"   ~: 6 ~=? binVal six]
 
 -- | Define a function 'foldBin' to fold a value of type 'Bin'
--- MSB :: Bit -> Bin        => fcb
--- B :: Bin -> Bit -> Bin   => fr
--- Reemplazar cada constructor por una funcion que devuelve 'a'
-foldBin :: (a -> Bit -> a) -> (Bit -> a) -> Bin -> a
-foldBin fr fcb bin = plegar bin
+
+foldBin :: (a-> Bit -> a) -> (Bit -> a) -> Bin -> a
+foldBin fBin fBit bin = plegar bin
     where
-        plegar (MSB bit) = fcb bit
-        plegar (B bin bit) = fr (plegar bin) bit
+        plegar (MSB bit) = fBit bit
+        plegar (B bin bit) = fBin (plegar bin) bit 
 
 -- | and use 'foldBin' to define a function 'binVal''  equivalent to 'binVal'.
 
 binVal' :: Bin -> Integer
-binVal' = foldBin (\ z bit -> 2 * z + bitVal bit) bitVal
+binVal' bin = foldBin (\ z bit -> 2*z+bitVal bit) bitVal bin
 
 -- | Test your function with HUnit.
-testbinVal' :: Test
-testbinVal' = test ["value of zero"  ~: 0 ~=? binVal' zero,
+
+testBinVal' :: Test
+testBinVal' = test ["value of zero"  ~: 0 ~=? binVal' zero,
                    "value of one"   ~: 1 ~=? binVal' one,
                    "value of three" ~: 3 ~=? binVal' three,
                    "value of six"   ~: 6 ~=? binVal' six]
 
 -- | Define a function 'normalize' that given a binary numeral trims leading zeroes.
-normalizeBit :: Bin -> Bit -> Bin
-normalizeBit (MSB O) b = MSB b 
-normalizeBit bin b = B bin b
 
 normalize :: Bin -> Bin
-normalize (MSB b) = MSB b
-normalize (B bin bit) = normalizeBit (normalize bin) bit
+normalize = undefined
 
 -- | and use 'foldBin' to define a function 'normalize''  equivalent to 'normalize'.
 
 normalize' :: Bin -> Bin
-normalize' = foldBin normalizeBit MSB
+normalize' = undefined
 
 -- | Test your functions with HUnit.
-testnormalize' :: Test
-testnormalize' = test ["primera prueba"  ~: B(B(MSB I) O) I ~=? normalize (B (B (B (B (MSB O) O) I) O) I),
-                   "segunda prueba"  ~: MSB O ~=? normalize (B (B (B (B (MSB O) O) O) O) O),
-                   "tercera prueba" ~: B(B(MSB I) O) I ~=? normalize' (B (B (B (B (MSB O) O) I) O) I),
-                   "cuarta prueba"  ~: MSB O ~=? normalize' (B (B (B (B (MSB O) O) O) O) O)]
 
--- EXTRA.
-testBinValue :: (Bin -> Z) -> Test
-testBinValue f = test ["value of zero"  ~: 0 ~=? f zero,
-                   "value of one"   ~: 1 ~=? f one,
-                   "value of three" ~: 3 ~=? f three,
-                   "value of six"   ~: 6 ~=? f six]
-
-foldList :: (a->b->b) ->b -> [a] -> b
-foldList f base xs = plegar xs 
-    where
-        plegar [] = base    -- [] :: [a] ---> base :: b 
-        plegar (x:xs) =  f x (plegar xs)   
-            -- (:) :: a -> [a] -> [a] ---> f :: a -> b -> b
+-- todo
 
 -- |----------------------------------------------------------------------
 -- | Exercise 2 - Free variables of expressions
@@ -127,47 +104,48 @@ foldList f base xs = plegar xs
 -- | occurring in an arithmetic expression. Ensure that each free variable
 -- | occurs once in the resulting list.
 
-fvAexp :: Aexp -> [Var]
-fvAexp expr = distinguir expr
-    where 
-        distinguir (N n) = []
-        distinguir (V x) = [x]
-        distinguir (Add a1 a2) = norepe (distinguir a1 ++ distinguir a2)
-        distinguir (Mult a1 a2) = norepe (distinguir a1 ++ distinguir a2)
-        distinguir (Sub a1 a2) = norepe (distinguir a1 ++ distinguir a2)
-
 norepe :: [Var] -> [Var]
 norepe [] = []
 norepe (x:xs) = if elem x xs then (norepe xs) else x:(norepe xs)
 
+fvAexp :: Aexp -> [Var]
+fvAexp aexp = distinguir aexp
+    where
+        distinguir (N numLit) = []
+        distinguir (V var) = [var]
+        distinguir (Add a1 a2) = norepe (distinguir a1 ++ distinguir a2)
+        distinguir (Mult a1 a2) = norepe (distinguir a1 ++ distinguir a2)
+        distinguir (Sub a1 a2) = norepe (distinguir a1 ++ distinguir a2)
+        distinguir (Div a1 a2) = norepe (distinguir a1 ++ distinguir a2)
+
 -- | Test your function with HUnit.
+
 testFvAexp :: Test
 testFvAexp = test ["FV: " ~: [] ~=? fvAexp(N "1"),
                    "FV: " ~: ["x"] ~=? fvAexp(V "x"),
-                   "FV: " ~: ["x"] ~=? fvAexp(Add (V "x") (V "x")),
-                   "FV: " ~: ["x", "y"] ~=? fvAexp(Mult (V "y") (V "p"))]
-
+                   "FV: " ~: ["x", "y"] ~=? fvAexp(Add (V "x") (V "y")),
+                   "FV: " ~: ["x"] ~=? fvAexp(Div (V "x") (N "0"))]
 
 -- | Define the function 'fvBexp' that computes the set of free variables
 -- | occurring in a Boolean expression.
 
 fvBexp :: Bexp -> [Var]
-fvBexp expr = distinguir expr
-    where 
-        distinguir (TRUE) = []
-        distinguir (FALSE) = []
+fvBexp bexp = distinguir bexp
+    where
+        distinguir TRUE = []
+        distinguir FALSE = []
         distinguir (Equ a1 a2) = norepe (fvAexp a1 ++ fvAexp a2)
         distinguir (Leq a1 a2) = norepe (fvAexp a1 ++ fvAexp a2)
-        distinguir (Neg a1) = norepe (distinguir a1)
-        distinguir (And a1 a2) = norepe (distinguir a1 ++ distinguir a2)
+        distinguir (Neg b1) = norepe (distinguir b1)
+        distinguir (And b1 b2) = norepe (distinguir b1 ++ distinguir b2)
 
 -- | Test your function with HUnit.
+
 testFvBexp :: Test
 testFvBexp = test ["FV: " ~: [] ~=? fvBexp(TRUE),
                    "FV: " ~: ["x"] ~=? fvBexp(Equ (V "x") (V "x")),
                    "FV: " ~: ["x"] ~=? fvBexp(Neg (Leq (V "x") (V "x"))),
                    "FV: " ~: ["x", "y"] ~=? fvBexp(And (Neg (Equ (V "y") (V "p"))) FALSE)]
-
 
 -- |----------------------------------------------------------------------
 -- | Exercise 3 - Substitution of variables in expressions
@@ -188,10 +166,15 @@ substAexp expr subst = distinguir expr subst
         distinguir (Add a1 a2) subst = Add (distinguir a1 subst) (distinguir a2 subst)
         distinguir (Mult a1 a2) subst = Mult (distinguir a1 subst) (distinguir a2 subst)
         distinguir (Sub a1 a2) subst = Sub (distinguir a1 subst) (distinguir a2 subst)
+        distinguir (Div a1 a2) subst = Div (distinguir a1 subst) (distinguir a2 subst)
+
 
 -- | Test your function with HUnit.
---testSubstAexp :: Test
---testSubstAexp = test ["Test1: y" ~: V "y" ~=? substAexp (V "x") ("x" :-> V "y")]
+
+testSubstAexp :: Test
+testSubstAexp = test ["Test1: y" ~: V "y" ~=? substAexp (V "x") ("x" :->: V "y"),
+                        "Test 2 : " ~: Div (V "y") (N "1") ~=? substAexp (Div (V "x") (N "1")) ("x" :->: V "y")] 
+
 
 -- | Define a function 'substBexp' that implements substitution for
 -- | Boolean expressions.
@@ -206,6 +189,9 @@ substBexp expr subst = distinguir expr subst
         distinguir (Neg b1) subst = Neg (distinguir b1 subst)
         distinguir (And b1 b2) subst = And (distinguir b1 subst) (distinguir b2 subst)
 
+-- | Test your function with HUnit.
+
+-- todo
 
 -- |----------------------------------------------------------------------
 -- | Exercise 4 - Update of state
@@ -220,6 +206,10 @@ data Update = Var :=>: Z
 update :: State -> Update -> State
 update s (x :=>: v) y = if x==y then v else s y
 
+-- | Test your function with HUnit.
+
+-- todo
+
 -- | Define a function 'updates' that takes a state 's' and a list of updates
 -- | 'us' and returns the updated states resulting from applying the updates
 -- | in 'us' from head to tail. For example:
@@ -230,57 +220,79 @@ update s (x :=>: v) y = if x==y then v else s y
 
 updates :: State ->  [Update] -> State
 updates s [] = s
-updates s (x:xs) = updates (update s x) xs
+updates s (x:xs) = updates (update s x) xs 
+
+-- | Test your function with HUnit.
+
+-- todo
 
 -- |----------------------------------------------------------------------
 -- | Exercise 5 - Folding expressions
 -- |----------------------------------------------------------------------
 -- | Define a function 'foldAexp' to fold an arithmetic expression
 
-foldAexp :: (NumLit->a) -> (Var->a) -> (a->a->a) -> (a->a->a) -> (a->a->a) -> Aexp -> a
-foldAexp fNum fVar fSum fMul fRes expr = plegar expr
+foldAexp :: (NumLit -> a) -> (Var -> a) -> (a -> a -> a) -> (a -> a -> a) -> (a -> a -> a) -> (a -> a -> a) -> Aexp -> a
+foldAexp fN fV fAdd fMult fSub fDiv a = distinguir a
     where
-        plegar (N num) = fNum num
-        plegar (V var) = fVar var
-        plegar (Add a1 a2) = fSum (plegar a1) (plegar a2)
-        plegar (Mult a1 a2) = fMul (plegar a1) (plegar a2)
-        plegar (Sub a1 a2) = fRes (plegar a1) (plegar a2)
+        distinguir (N n) = fN n
+        distinguir (V v) = fV v
+        distinguir (Add a1 a2) = fAdd (distinguir a1) (distinguir a2)
+        distinguir (Mult a1 a2) = fMult (distinguir a1) (distinguir a2)
+        distinguir (Sub a1 a2) = fSub (distinguir a1) (distinguir a2)
+        distinguir (Div a1 a2) = fDiv (distinguir a1) (distinguir a2)
+
 
 -- | Use 'foldAexp' to define the functions 'aVal'', 'fvAexp'', and 'substAexp''.
 
 aVal' :: Aexp -> State -> Z
-aVal' expr s = foldAexp read s (+) (*) (-) expr
+aVal' a s = foldAexp numLit s (+) (*) (-) div a
 
 fvAexp' :: Aexp -> [Var]
-fvAexp' expr = foldAexp (\ n -> []) (\ n -> [n]) (++) (++) (++) expr
+fvAexp' a = foldAexp (\ n -> []) (\ n -> [n]) (++) (++) (++) (++) a
 
 substAexp' :: Aexp -> Subst -> Aexp
-substAexp' expr (y:->: a0) = foldAexp N (\ v -> if v == y then a0 else V v) Add Mult Sub expr
+substAexp' expr (y:->: a0) = foldAexp N (\ v -> if v == y then a0 else V v) Add Mult Sub Div expr
+
+-- | Test your functions with HUnit.
+
+-- todo
 
 -- | Define a function 'foldBexp' to fold a Boolean expression and use it
 -- | to define the functions 'bVal'', 'fvBexp'', and 'substAexp''.
 
-foldBexp :: a -> a -> (Aexp->Aexp->a) -> (Aexp->Aexp->a) -> (a->a) -> (a->a->a) -> Bexp -> a
-foldBexp fcbT fcbF fEqu fLeq fNeg fAnd expr = plegar expr
+foldBexp :: a -> a -> (Aexp -> Aexp -> a) -> (Aexp -> Aexp -> a) -> (a -> a) -> (a -> a -> a) -> Bexp -> a
+foldBexp fTrue fFalse fEqu fLeq fNeg fAnd b = plegar b
     where
-        plegar (TRUE) = fcbT
-        plegar (FALSE) = fcbF
+        plegar (TRUE) = fTrue
+        plegar (FALSE) = fFalse
         plegar (Equ a1 a2) = fEqu a1 a2
         plegar (Leq a1 a2) = fLeq a1 a2
-        plegar (Neg b1) = fNeg (plegar b1)
+        plegar (Neg b) = fNeg (plegar b)
         plegar (And b1 b2) = fAnd (plegar b1) (plegar b2)
 
 bVal' :: Bexp -> State -> Bool
-bVal' expr s = foldBexp True False fIqual fLessEqu not (&&) expr
+bVal' b s = foldBexp True False fIqual fLessEqu not (&&) b
     where
         fIqual = (\ a1 a2 -> (aVal' a1 s) == (aVal' a2 s))
         fLessEqu = (\ a1 a2 -> (aVal' a1 s) <= (aVal' a2 s))
 
 fvBexp' :: Bexp -> [Var]
-fvBexp' = undefined
+fvBexp' b = foldBexp [] [] fEq fLeq fNeg (++) b
+    where
+        fNeg b = b
+        fEq a1 a2 = norepe(fvAexp' a1 ++ fvAexp' a2)
+        fLeq a1 a2 = norepe(fvAexp' a1 ++ fvAexp' a2)
 
 substBexp' :: Bexp -> Subst -> Bexp
 substBexp' b subst = foldBexp TRUE FALSE feq fle Neg And b
     where
         feq a1 a2 = Equ (substAexp' a1 subst) (substAexp' a2 subst)
         fle a1 a2 = Leq (substAexp' a1 subst) (substAexp' a2 subst)
+
+-- | Test your functions with HUnit.
+testFvBexp' :: Test
+testFvBexp' = test ["FV: " ~: [] ~=? fvBexp'(TRUE),
+                   "FV: " ~: ["x"] ~=? fvBexp'(Equ (V "x") (V "x")),
+                   "FV: " ~: ["x"] ~=? fvBexp'(Neg (Leq (V "x") (V "x"))),
+                   "FV: " ~: ["x", "y"] ~=? fvBexp'(And (Neg (Equ (V "x") (V "y"))) FALSE)]
+
