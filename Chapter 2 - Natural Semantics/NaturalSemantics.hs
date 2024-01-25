@@ -5,7 +5,7 @@ Fall 2023
 
 Implementation of the Natural Semantics of the WHILE Language
 
-Author:
+Author: Marcos Hidalgo Baños
 
 -}
 
@@ -21,21 +21,18 @@ import           While
 data Config = Inter Stm State  -- <S, s>
             | Final State      -- s
 
-data Update = Var :=>: Z
+-- representation of the execution judgement <S, s> -> s'
 
--- | define a function 'update' that takes a state 's' and an update 'x :=> v'
--- | and returns the updated state 's [x :=> v]'
+data Update = Var :=>: Z
 
 update :: State -> Update -> State
 update s (x :=>: v) y = if x==y then v else s y
-
--- representation of the execution judgement <S, s> -> s'
 
 nsStm :: Config -> Config
 
 -- x := a
 
-nsStm (Inter (Ass x a) s)      = Final (update s (x :=>: aVal a s))
+nsStm (Inter (Ass x a) s)      = Final (update s (x :=>: aVal a s)) 
 
 -- skip
 
@@ -52,54 +49,73 @@ nsStm (Inter (Comp ss1 ss2) s) = Final s''
 
 -- B[b]s = tt
 nsStm (Inter (If b ss1 ss2) s) 
-  | (bVal b s) = nsStm (Inter ss1 s)
+ | bVal b s = Final s'
+  where
+    Final s' = nsStm (Inter ss1 s)
 
 -- B[b]s = ff
-nsStm (Inter (If b ss1 ss2) s)
-  | not (bVal b s) = nsStm (Inter ss2 s)
+nsStm (Inter (If b ss1 ss2) s) 
+ | not (bVal b s) = Final s'
+  where
+    Final s' = nsStm (Inter ss2 s)
 
 -- while b do s
 
 -- B[b]s = ff
-nsStm (Inter (While b ss) s)
-  | not (bVal b s) = Final s
+nsStm (Inter (While b ss) s)  
+ | not (bVal b s) = Final s
 
 -- B[b]s = tt
-nsStm (Inter (While b ss) s)
-  | (bVal b s) = Final s''
-    where
-      Final s' = nsStm (Inter ss s)
-      Final s'' = nsStm (Inter (While b ss) s')
+nsStm (Inter (While b ss) s) 
+ | bVal b s = Final s''
+  where
+    Final s' = nsStm (Inter ss s)
+    Final s'' = nsStm (Inter (While b ss) s')
 
 -- repeat S until b
--- B[b]s == ff
-nsStm (Inter (Repeat ss b))
-  | (bVal b s) = nsStm (Inter ss s)
+-- B[b]s = tt
+nsStm (Inter (Repeat ss b) s)
+ | bVal b s' = Final s'
+  where
+    Final s' = nsStm (Inter ss s)
 
--- B[b]s == tt
-nsStm (Inter (Repeat ss b))
-  | not (bVal b s) = Final s''
+-- B[b]s = ff
+nsStm (Inter (Repeat ss b) s)
+ | not (bVal b s') = Final s''
   where
     Final s' = nsStm (Inter ss s)
     Final s'' = nsStm (Inter (Repeat ss b) s')
 
--- for x:= a1 to a2 do S
--- B[a1 > a2] s = ff
+-- for x:=a1 to a2 do S
+-- B[b]s = ff
 nsStm (Inter (For x a1 a2 ss) s)
-  | not (bVal (Leq a1 a2) s) = Final s
+ | not (bVal (Leq a1 a2) s) = Final s
 
--- B[a1 <= a2] s = tt
+-- B[b]s = tt
 nsStm (Inter (For x a1 a2 ss) s)
-  | bVal (Leq a1 a2) s = Final s'''
+ | bVal (Leq a1 a2) s = Final s'''
   where
     Final s' = nsStm (Inter (Ass x a1) s)
     Final s'' = nsStm (Inter ss s')
     Final s''' = nsStm (Inter (For x (Add v1 (N "1")) v2 ss) s'')
-      v1 = N (show (aVal a1 s0))
-      v2 = N (show (aVal a2 s0))
+    v1 = N (show (aVal a1 s))
+    v2 = N (show (aVal a2 s))
+
+-- do S while b
+-- B[b]s = ff
+nsStm (Inter (DoWhile ss b) s)
+ | not (bVal b s') = Final s'
+  where
+    Final s' = nsStm (Inter ss s)
+
+-- B[b]s = tt
+nsStm (Inter (DoWhile ss b) s)
+ | bVal b s' = Final s''
+  where
+    Final s' = nsStm (Inter ss s)
+    Final s'' = nsStm (Inter (DoWhile ss b) s')
 
 -- semantic function for natural semantics
 sNs :: Stm -> State -> State
 sNs ss s = s'
   where Final s' = nsStm (Inter ss s)
-

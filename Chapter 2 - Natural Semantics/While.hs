@@ -17,4 +17,5 @@ data Stm = Ass Var Aexp
          | While Bexp Stm
          | Repeat Stm Bexp           -- | todo
          | For Var Aexp Aexp Stm     -- | todo
+         | DoWhile Stm Bexp
          deriving Show

@@ -5,7 +5,7 @@ Fall 2023
 
 Implementation of the Natural Semantics of the WHILE Language
 
-Author:
+Author: Marcos Hidalgo Baños
 
 -}
 
@@ -20,6 +20,7 @@ import           State
 import           While
 import           WhileExamples
 import           WhileParser
+import           Expressions
 
 -- |----------------------------------------------------------------------
 -- | Exercise 1
@@ -57,12 +58,7 @@ showState :: State -> [Var] -> [String]
 showState s xs = map (\ x -> x ++ "->" ++ show (s x)) xs
 
 -- | Test your function with HUnit.
-testshowState :: Test
-testshowState = TestList [ "showState s [\"x\"]" ~: ["x->1"] ~=? showState execFactorial ["x"]
-                         , "showState s [\"y\"]" ~: ["y->6"] ~=? showState execFactorial ["y"]
-                         , "showState s [\"x\", \"y\"]" ~: ["x->1", "y->6"] ~=? showState execFactorial ["x", "y"]
-                         , "showState s [\"y\", \"z\", \"x\"]" ~: ["y->6", "z->0", "x->1"] ~=? showState execFactorial ["y", "z", "x"]
-                         ]
+
 
 -- | Using the function 'sNs' to execute a WHILE program is handy a bit awkward.
 -- | The WHILE statement must be provided in abstract syntax and the initial
@@ -105,11 +101,18 @@ run filename =
 -- | to rely on the 'while b do S' statement.
 
 {- Formal definition of 'repeat S until b'
-    [repeat tt]     <S,s> --> s' , <repeat S until b,s'> --> s''
-                  ------------------------------------------------
-                              <repeat S until b,s> --> s''
 
-    [repeat ff]   <repeat S until b, s> --> s
+[repeat_tt]
+
+        < S, s > -> s' 
+      -----------------------------------------
+       < repeat S until b, s > -> s'
+  
+[repeat_ff]
+
+        < S, s > -> s' , < repeat S until b, s' > -> s''
+      ---------------------------------------------------
+       < repeat S until b, s > -> s''
 
 -}
 
@@ -138,8 +141,17 @@ run filename =
 -- | to rely on the 'while b do S' or the 'repeat S until b' statements.
 
 {- Formal definition of 'for x:= a1 to a2 do S'
-    For Var Aexp Aexp Stm
 
+[for_ff] x >= a2
+
+        ---------------------------------------------
+          < for x:= a1 to a2 do S, s > --> s
+
+[for_tt] x < a2
+
+         < Ass x a1, s > --> s' , < S, s' > -> s'' , < for x:=a1+1 to a2 do S, s'' > -> s'''
+        ------------------------------------------------------------------------------------
+          < for x:= a1 to a2 do S, s > --> s'''
 -}
 
 -- | Exercise 3.2
@@ -150,44 +162,117 @@ run filename =
 -- | Write a couple of WHILE programs that use the 'for' statement
 -- | and test your functions with HUnit and 'run'.
 
+{- Formal definition of 'do S while b'
+
+[do_ff] 
+           < S, s > --> s'
+        ---------------------------------------------
+          < do S while b, s > --> s'
+
+[do_tt]
+
+         < S, s > --> s' , < do S while b, s' > --> s'' 
+        -------------------------------------------------
+          < do S while b, s > --> s''
+-}
 
 -- |----------------------------------------------------------------------
 -- | Exercise 4
 -- |----------------------------------------------------------------------
 
--- | Define the semantics of arithmetic expressions (Aexp) by means of
+-- | Define the semantics of arithmetic expressions (Bexp) by means of
 -- | natural semantics. To that end, define an algebraic datatype 'ConfigAexp'
 -- | to represent the configurations, and a function 'nsAexp' to represent
 -- | the evaluation judgement.
 
 -- representation of configurations for Aexp
 
-data ConfigAExp = InterAExp Aexp State
-                | FinalAExp Z
+data ConfigAExp = InterAexp Aexp State  -- <a, s>
+                 | FinalAexp Z      -- Z
 
 -- representation of the evaluation judgement <a, s> -> z
 
-nsAexp :: ConfigAExp -> ConfigAExp
-nsAexp (FinalAExp x) = FinalAExp x
-nsAexp (InterAExp (N n) s) = FinalAExp (read n)
-nsAexp (InterAExp (V x) s) = FinalAExp (s x)
-nsAexp (InterAExp (Add a1 a2) s) = FinalAExp (z1 + z2)
+aexpStm :: ConfigAExp -> ConfigAExp
+aexpStm exp = distinguir exp
   where
-    FinalAExp z1 = nsAexp (InterAExp a1 s)
-    FinalAExp z2 = nsAexp (InterAExp a2 s)
+    distinguir (FinalAexp z) = FinalAexp z
+    distinguir (InterAexp (N n) s) = FinalAexp (read n)
+    distinguir (InterAexp (V x) s) = FinalAexp (s x)
+    distinguir (InterAexp (Add a1 a2) s) = FinalAexp (a1' + a2')
+      where
+        FinalAexp a1' = aexpStm (InterAexp a1 s)
+        FinalAexp a2' = aexpStm (InterAexp a2 s)
+    distinguir (InterAexp (Mult a1 a2) s) = FinalAexp (a1' * a2')
+      where
+        FinalAexp a1' = aexpStm (InterAexp a1 s)
+        FinalAexp a2' = aexpStm (InterAexp a2 s)
+    distinguir (InterAexp (Sub a1 a2) s) = FinalAexp (a1' - a2')
+      where
+        FinalAexp a1' = aexpStm (InterAexp a1 s)
+        FinalAexp a2' = aexpStm (InterAexp a2 s)
 
-nsAexp (InterAExp (Sub a1 a2) s) = FinalAExp (z1 - z2)
+nsAexp :: Aexp -> State -> Z
+nsAexp ss s = z
   where
-    FinalAExp z1 = nsAexp (InterAExp a1 s)
-    FinalAExp z2 = nsAexp (InterAExp a2 s)
-
-nsAexp (InterAExp (Mult a1 a2) s) = FinalAExp (z1 * z2)
-  where
-    FinalAExp z1 = nsAexp (InterAExp a1 s)
-    FinalAExp z2 = nsAexp (InterAExp a2 s)
+    FinalAexp z = aexpStm (InterAexp ss s)
 
 -- | Test your function with HUnit. Inspect the final values of at least
 -- | four different evaluations.
+
+testNsAexp :: Test
+testNsAexp = TestList [
+  nsAexp (N "1") factorialInit ~?= 1,
+  nsAexp (V "y") factorialInit ~?= 0,
+  nsAexp (Add (N "1") (N "2")) factorialInit ~?= 3,
+  nsAexp (Mult (N "1") (N "2")) factorialInit ~?= 2,
+  nsAexp (Sub (N "1") (N "2")) factorialInit ~?= (-1)
+  ]
+
+-- | Define the semantics of arithmetic expressions (Bexp) by means of
+-- | natural semantics. To that end, define an algebraic datatype 'ConfigBexp'
+-- | to represent the configurations, and a function 'nsBexp' to represent
+-- | the evaluation judgement.
+
+data ConfigBExp = InterBexp Bexp State  -- <b, s>
+                 | FinalBexp Bool     -- b
+
+bexpStm :: ConfigBExp -> ConfigBExp
+bexpStm exp = distinguir exp
+  where
+    distinguir (FinalBexp b) = FinalBexp b
+    distinguir (InterBexp TRUE s) = FinalBexp True
+    distinguir (InterBexp FALSE s) = FinalBexp False
+    distinguir (InterBexp (Equ a1 a2) s) = FinalBexp (a1' == a2')
+      where
+        FinalAexp a1' = aexpStm (InterAexp a1 s)
+        FinalAexp a2' = aexpStm (InterAexp a2 s)
+    distinguir (InterBexp (Leq a1 a2) s) = FinalBexp (a1' <= a2')
+      where
+        FinalAexp a1' = aexpStm (InterAexp a1 s)
+        FinalAexp a2' = aexpStm (InterAexp a2 s)
+    distinguir (InterBexp (Neg b) s) = FinalBexp (not b')
+      where
+        FinalBexp b' = bexpStm (InterBexp b s)
+    distinguir (InterBexp (And b1 b2) s) = FinalBexp (b1' && b2')
+      where
+        FinalBexp b1' = bexpStm (InterBexp b1 s)
+        FinalBexp b2' = bexpStm (InterBexp b2 s)
+ 
+nsBexp :: Bexp -> State -> Bool
+nsBexp b s = nb
+  where
+    FinalBexp nb = bexpStm (InterBexp b s)
+
+-- | Test your function with HUnit. Inspect the final values of at least
+-- | four different evaluations.
+
+testNsBexp :: Test
+testNsBexp = TestList [
+  nsBexp (Leq (N "1") (N "5")) factorialInit ~?= True,
+  nsBexp (Equ (N "1") (N"1")) factorialInit ~?= True,
+  nsBexp (Neg FALSE) factorialInit ~?= True,
+  nsBexp (And (Leq (N "1") (N "5")) (Equ (N "1") (N"1"))) factorialInit ~?= True
+  ]
 
 -- |----------------------------------------------------------------------
 -- | Exercise 5
@@ -214,13 +299,30 @@ nsAexp (InterAExp (Mult a1 a2) s) = FinalAExp (z1 * z2)
 -- | if and only if the program does not overwrite its control variables.
 -- | Use axioms and inference rules to validate your judgements.
 
-{-
--}
-
 -- | Exercise 5.2
 -- | Define a function 'forLoopVariableCheck' that implements the static
 -- | semantics check above described. Use the function 'analyze'
 -- | to check your implementation.
+
+fvStm :: Stm -> [Var]
+fvStm (Ass x a) = norepe (x : fvAexp a)
+fvStm (Skip) = []
+fvStm (Comp ss1 ss2) = norepe ((fvStm ss1) ++ (fvStm ss2))
+fvStm (If b ss1 ss2) = norepe((fvBexp b) ++ (fvStm ss1) ++ (fvStm ss2))
+fvStm (While b ss) = norepe((fvBexp b) ++ (fvStm ss))
+fvStm (Repeat ss b) = norepe((fvStm ss) ++ (fvBexp b))
+fvStm (For x a1 a2 ss) = norepe((fvAexp a1) ++ (fvAexp a2) ++ (fvStm ss))
+
+
+testfvStm :: Test
+testfvStm = TestList [ "Test1" ~: [] ~=? fvStm (Skip),
+                        "Test2" ~: ["x"] ~=? fvStm (Ass "x" (N "1")),
+                        "TestPower" ~: ["z", "x", "y"] ~=? fvStm(Comp (Ass "z" (N "1"))
+                                                                  (While (Neg (Equ (V "y") (N "0")))
+                                                                      (Comp (Ass "z" (Mult (V "z") (V "x")))
+                                                                            (Ass "y" (Sub (V "y") (N "1"))))))
+                      ]
+
 
 forLoopVariableCheck :: Stm -> Bool
 forLoppVariableCheck (For x a1 a2 ss) = not (elem x (fvStm ss)) && forLoopVariableCheck ss -- Si x no es una variable del cuerpo del bucle
@@ -229,7 +331,6 @@ forLoopVariableCheck (While b ss) = forLoopVariableCheck ss
 forLoopVariableCheck (If b ss1 ss2) = (forLoopVariableCheck ss1) && (forLoopVariableCheck ss2)
 forLoopVariableCheck (Comp ss1 ss2) = (forLoopVariableCheck ss1) && (forLoopVariableCheck ss2)
 forLoopVariableCheck _ = True -- Ass, Skip
-
 
 -- | Analyze the WHILE program stored in filename and show results
 analyze :: FilePath -> IO()
@@ -241,7 +342,6 @@ analyze filename =
      if ok then putStrLn "Program accepted"
      else putStrLn "Program rejected"
 
-
 -- | Convert concrete syntax to abstract syntax
 concreteToAbstract :: FilePath -> FilePath -> IO()
 concreteToAbstract inputFile outputFile =
@@ -251,4 +351,3 @@ concreteToAbstract inputFile outputFile =
     if null outputFile
       then putStrLn s
       else writeFile outputFile s
-

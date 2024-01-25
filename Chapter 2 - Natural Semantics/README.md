@@ -6,7 +6,6 @@
 
 Aexp.hs          - abstract syntax and semantics of Aexp
 Bexp.hs          - abstract syntax and semantics of Bexp
-State.hs         - states
 While.hs         - abstract syntax for WHILE
 WhileLexer.hs    - lexer for WHILE
 WhileParser.hs   - parser for WHILE
