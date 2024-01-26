@@ -6,7 +6,7 @@ Fall 2023
 Implementation of the Natural Semantics of the WHILE Language
 with Blocks and Procedures (Static Scope)
 
-Author:
+Author: Marcos Hidalgo Baños
 
 -}
 
@@ -46,16 +46,20 @@ import           While
 ----------------------------------------------------------------------
 
 -- locations
+
 type Loc = Z
 
 -- variable environment
+
 type EnvVar = Var -> Loc
 
 -- store
+
 type Store = Loc -> Z
 
 -- the register 'next' is actually stored at location 0 of the store:
 -- 'sto next' refers to the first available cell in the store 'sto'
+
 next :: Loc
 next = 0
 
@@ -99,19 +103,19 @@ updateS sto l v = \ ll -> if ll == l then v else sto ll
 -- | Exercise 1.2 - natural semantics for variable declarations
 
 -- variable declaration configurations
+
 data ConfigD = InterD DecVar EnvVar Store  -- <Dv, envV, store>
              | FinalD EnvVar Store         -- <envV, store>
 
 nsDecV :: ConfigD -> ConfigD
 
 -- var x:= a
-nsDecV (InterD (Dec x a decs) envV store) = 
-  nsDecV (InterD decs envV' store') --recursividad ->D
+nsDecV (InterD (Dec x a decs) envV store) = nsDecV (InterD decs envV' store')
   where
     l = store next
     envV' = updateV envV x l
     v = aVal a (store . envV)
-    store' = updateS (updateS store l v) next (new l) 
+    store' = updateS (updateS store l v) next (new l)
 
 -- epsilon
 nsDecV (InterD EndDec envV store)         = FinalD envV store
@@ -120,9 +124,8 @@ nsDecV (InterD EndDec envV store)         = FinalD envV store
 -- Procedure Declarations
 ----------------------------------------------------------------------
 
--- type EP = Pname -> (Stm, EnvV, EP) -- No compila, hay recursividad
-
 -- procedure environment (note this environment is not a function)
+
 --                    p    s    snapshots    previous
 --                    |    |     /     \        |
 data EnvProc = EnvP Pname Stm EnvVar EnvProc EnvProc
@@ -150,15 +153,17 @@ envProc EmptyEnvProc p              = error ("procedimiento no definido:" ++ p)
 ----------------------------------------------------------------------
 
 -- representation of configurations for WHILE
+
 data Config = Inter Stm Store  -- <S, sto>
             | Final Store      -- sto
 
 -- representation of the transition relation envV, envP |- <S, sto> -> sto'
+
 nsStm :: EnvVar -> EnvProc -> Config -> Config
 
 -- | Exercise 3.1
 
--- Asignacion
+-- Ass
 nsStm envV envP (Inter (Ass x a) store) = Final store'
   where
     l = envV x
@@ -166,56 +171,58 @@ nsStm envV envP (Inter (Ass x a) store) = Final store'
     store' = updateS store l v
 
 -- Skip
-nsStm envV envP (Inter (Skip) store) = Final store
+nsStm envV envP (Inter Skip store) = Final store
 
--- Composicion
+-- Comp
 nsStm envV envP (Inter (Comp ss1 ss2) store) = Final store''
   where
-    Final store' = nsStm envV envP (Inter ss1 store)
-    Final store'' = nsStm envV envP (Inter ss2 store')
+    Final store' = nsStm envV envP (Inter ss1 store) 
+    Final store'' = nsStm envV envP (Inter ss2 store') 
 
--- If // True
-sStm envV envP (Inter (If b ss1 ss2) sto)
-  | bVal b (sto . envV) == True = Final sto'
-  where 
-    Final sto' = nsStm envV envP (Inter ss1 sto)
-
--- If // False
-nsStm envV envP (Inter (If b ss1 ss2) sto)
-  | bVal b (sto . envV) == False = Final sto'
+-- If
+-- B[b](store . envV) = tt
+nsStm envV envP (Inter (If b ss1 ss2) store)
+  | bVal b (store . envV) = Final store'
   where
-    Final sto' = nsStm envV envP (Inter ss2 sto)
+    Final store' = nsStm envV envP (Inter ss1 store) 
 
--- While // True
-nsStm envV envP (Inter (While b ss) sto)
-  | bVal b (sto . envV) == True = Final sto''
-  where 
-    Final sto' = nsStm envV envP (Inter ss sto)
-    Final sto'' = nsStm envV envP (Inter (While b ss) sto')
+-- B[b](store . envV) = ff
+nsStm envV envP (Inter (If b ss1 ss2) store)
+  | not (bVal b (store . envV)) = Final store'
+  where
+    Final store' = nsStm envV envP (Inter ss2 store) 
 
--- While // False
-nsStm envV envP (Inter (While b ss) sto)
-  | bVal b (sto . envV) == False = Final sto
+-- While
+-- B[b](store . envV) = tt
+nsStm envV envP (Inter (While b ss) store)
+  | bVal b (store . envV) = Final store''
+  where
+    Final store' = nsStm envV envP (Inter ss store)
+    Final store'' = nsStm envV envP (Inter (While b ss) store')
+
+-- B[b](store . envV) = ff
+nsStm envV envP (Inter (While b ss) store)
+  | not (bVal b (store . envV)) = Final store
 
 -- Block
-nsStm envV envP (Inter (Block vars procs s) store) = 
-  nsStm envV' envP' (Inter s store')
+nsStm envV envP (Inter (Block dv dp ss) store) = Final store''
   where
-    FinalD envV' store' = nsDecV (InterD vars envV store)
-    envP' = updP procs envV' envP
-
+    FinalD envV' store' = nsDecV (InterD dv envV store)
+    envP' = updP dp envV' envP
+    Final store'' = nsStm envV' envP' (Inter ss store')
+  
 -- Call p
-nsStm envV envP (Inter (Call p) sto) = Final sto'
+nsStm envV envP (Inter (Call p) store) = Final store'
   where
     (ss, envV', envP') = envProc envP p
-    Final sto' = nsStm envV' envP' (Inter ss sto)
-
--- Call rec
-nsStm envV envP (Inter (Call p) sto) = Final sto'
+    Final store' = nsStm envV' envP' (Inter ss store)
+  
+-- Call rec 
+nsStm envV envP (Inter (Call p) store) = Final store'
   where
     (ss, envV', envP') = envProc envP p
-    Final sto' = nsStm envV' (updP (Proc p ss EndProc) envV' envP') (Inter ss sto)
-
+    Final store' = 
+      nsStm envV' (updP (Proc p ss EndProc) envV' envP') (Inter ss store)
 
 -- semantic function for Natural Semantics
 sNs :: Stm -> Store -> Store
