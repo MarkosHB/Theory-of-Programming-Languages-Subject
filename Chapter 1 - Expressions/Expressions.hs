@@ -85,17 +85,32 @@ testBinVal' = test ["value of zero"  ~: 0 ~=? binVal' zero,
 
 -- | Define a function 'normalize' that given a binary numeral trims leading zeroes.
 
+normalizeBit :: Bin -> Bit -> Bin
+normalizeBit (MSB O) b = MSB b 
+normalizeBit bin b = B bin b
+
 normalize :: Bin -> Bin
-normalize = undefined
+normalize (MSB b) = MSB b
+normalize (B bin bit) = normalizeBit (normalize bin) bit
 
 -- | and use 'foldBin' to define a function 'normalize''  equivalent to 'normalize'.
 
 normalize' :: Bin -> Bin
-normalize' = undefined
+normalize' = foldBin normalizeBit MSB
 
 -- | Test your functions with HUnit.
+testnormalize' :: Test
+testnormalize' = test ["primera prueba"  ~: B(B(MSB I) O) I ~=? normalize (B (B (B (B (MSB O) O) I) O) I),
+                   "segunda prueba"  ~: MSB O ~=? normalize (B (B (B (B (MSB O) O) O) O) O),
+                   "tercera prueba" ~: B(B(MSB I) O) I ~=? normalize' (B (B (B (B (MSB O) O) I) O) I),
+                   "cuarta prueba"  ~: MSB O ~=? normalize' (B (B (B (B (MSB O) O) O) O) O)]
 
--- todo
+-- EXTRA.
+testBinValue :: (Bin -> Z) -> Test
+testBinValue f = test ["value of zero"  ~: 0 ~=? f zero,
+                   "value of one"   ~: 1 ~=? f one,
+                   "value of three" ~: 3 ~=? f three,
+                   "value of six"   ~: 6 ~=? f six]
 
 -- |----------------------------------------------------------------------
 -- | Exercise 2 - Free variables of expressions
@@ -138,6 +153,7 @@ fvBexp bexp = distinguir bexp
         distinguir (Leq a1 a2) = norepe (fvAexp a1 ++ fvAexp a2)
         distinguir (Neg b1) = norepe (distinguir b1)
         distinguir (And b1 b2) = norepe (distinguir b1 ++ distinguir b2)
+        distinguir (Neq a1 a2) = norepe (fvAexp a1 ++ fvAexp a2)
 
 -- | Test your function with HUnit.
 

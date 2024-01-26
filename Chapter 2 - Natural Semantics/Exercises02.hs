@@ -210,6 +210,11 @@ aexpStm exp = distinguir exp
       where
         FinalAexp a1' = aexpStm (InterAexp a1 s)
         FinalAexp a2' = aexpStm (InterAexp a2 s)
+    distinguir (InterAexp (Div a1 a2) s) = 
+      if a2' == 0 then error "Div por cero" else FinalAexp (div a1' a2')
+      where
+        FinalAexp a1' = aexpStm (InterAexp a1 s)
+        FinalAexp a2' = aexpStm (InterAexp a2 s)
 
 nsAexp :: Aexp -> State -> Z
 nsAexp ss s = z
@@ -225,7 +230,8 @@ testNsAexp = TestList [
   nsAexp (V "y") factorialInit ~?= 0,
   nsAexp (Add (N "1") (N "2")) factorialInit ~?= 3,
   nsAexp (Mult (N "1") (N "2")) factorialInit ~?= 2,
-  nsAexp (Sub (N "1") (N "2")) factorialInit ~?= (-1)
+  nsAexp (Sub (N "1") (N "2")) factorialInit ~?= (-1),
+  nsAexp (Div (N "25") (N "0")) factorialInit ~?= 5
   ]
 
 -- | Define the semantics of arithmetic expressions (Bexp) by means of
@@ -257,6 +263,10 @@ bexpStm exp = distinguir exp
       where
         FinalBexp b1' = bexpStm (InterBexp b1 s)
         FinalBexp b2' = bexpStm (InterBexp b2 s)
+    distinguir (InterBexp (Neq a1 a2) s) = FinalBexp (not (a1' == a2'))
+      where
+        FinalAexp a1' = aexpStm (InterAexp a1 s)
+        FinalAexp a2' = aexpStm (InterAexp a2 s)
  
 nsBexp :: Bexp -> State -> Bool
 nsBexp b s = nb
@@ -271,7 +281,8 @@ testNsBexp = TestList [
   nsBexp (Leq (N "1") (N "5")) factorialInit ~?= True,
   nsBexp (Equ (N "1") (N"1")) factorialInit ~?= True,
   nsBexp (Neg FALSE) factorialInit ~?= True,
-  nsBexp (And (Leq (N "1") (N "5")) (Equ (N "1") (N"1"))) factorialInit ~?= True
+  nsBexp (And (Leq (N "1") (N "5")) (Equ (N "1") (N"1"))) factorialInit ~?= True,
+  nsBexp (Neq (N "1") (N "5")) factorialInit ~?= True
   ]
 
 -- |----------------------------------------------------------------------
@@ -312,6 +323,7 @@ fvStm (If b ss1 ss2) = norepe((fvBexp b) ++ (fvStm ss1) ++ (fvStm ss2))
 fvStm (While b ss) = norepe((fvBexp b) ++ (fvStm ss))
 fvStm (Repeat ss b) = norepe((fvStm ss) ++ (fvBexp b))
 fvStm (For x a1 a2 ss) = norepe((fvAexp a1) ++ (fvAexp a2) ++ (fvStm ss))
+fvStm (DoWhile ss b) = norepe((fvStm ss) ++ (fvBexp b))
 
 
 testfvStm :: Test
@@ -328,6 +340,7 @@ forLoopVariableCheck :: Stm -> Bool
 forLoppVariableCheck (For x a1 a2 ss) = not (elem x (fvStm ss)) && forLoopVariableCheck ss -- Si x no es una variable del cuerpo del bucle
 forLoopVariableCheck (Repeat ss b) = forLoopVariableCheck ss
 forLoopVariableCheck (While b ss) = forLoopVariableCheck ss
+forLoopVariableCheck (DoWhile ss b) = forLoopVariableCheck ss
 forLoopVariableCheck (If b ss1 ss2) = (forLoopVariableCheck ss1) && (forLoopVariableCheck ss2)
 forLoopVariableCheck (Comp ss1 ss2) = (forLoopVariableCheck ss1) && (forLoopVariableCheck ss2)
 forLoopVariableCheck _ = True -- Ass, Skip

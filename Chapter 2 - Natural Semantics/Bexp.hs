@@ -15,6 +15,7 @@ data  Bexp  =  TRUE
             |  Leq Aexp Aexp
             |  Neg Bexp
             |  And Bexp Bexp
+            |  Neq Aexp Aexp
             deriving (Show, Eq)
 
 ---------------------------------------------------------------------
@@ -30,3 +31,5 @@ bVal (Equ a1 a2) s =  aVal a1 s == aVal a2 s
 bVal (Leq a1 a2) s =  aVal a1 s <= aVal a2 s
 bVal (Neg b) s     =  not (bVal b s)
 bVal (And b1 b2) s =  bVal b1 s && bVal b2 s
+bVal (Neq a1 a2) s =  not (aVal a1 s == aVal a2 s) 
+ 
