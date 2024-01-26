@@ -5,7 +5,7 @@ Fall 2023
 
 Implementation of the Structural Operational Semantics of the WHILE Language
 
-Author:
+Author: Marcos Hidalgo Baños
 
 -}
 
@@ -44,57 +44,54 @@ update s (x :=>: v) y = if x==y then v else s y
 sosStm :: Config -> Config
 
 -- x := a
-sosStm (Inter (Ass x a) s) = Final (update s (x :=>: aVal a s))
+
+sosStm (Inter (Ass x a) s) = Final (update s (x :=>: (aVal a s)))
 
 -- skip
-sosStm (Inter Skip s) = Final s
+
+sosStm (Inter (Skip) s) = Final s
 
 -- s1; s2
-sosStm (Inter (Comp s1 s2) s)  --comp1
-    | isInter next = Inter (Comp s1' s2) s'
+-- [comp_sos1]
+sosStm (Inter (Comp ss1 ss2) s) 
+ | isInter next = Inter (Comp ss1' ss2) s'
     where
-        next = sosStm (Inter s1 s)
-        Inter s1' s' = next
-
-sosStm (Inter (Comp s1 s2) s)  --comp2
-    | isFinal next = Inter s2 s'
+        next = sosStm (Inter ss1 s)
+        Inter ss1' s' = next
+-- [comp_sos2]
+sosStm (Inter (Comp ss1 ss2) s)
+ | isFinal next = Inter ss2 s'
     where
-        next = sosStm (Inter s1 s)
+        next = sosStm (Inter ss1 s)
         Final s' = next
- 
+
 -- if b then s1 else s2
-sosStm (Inter (If expr s1 s2) s)
-    | (bVal expr s) = Inter s1 s
-sosStm (Inter (If expr s1 s2) s)
-    | not (bVal expr s) = Inter s2 s 
+-- B[b]s = tt
+sosStm (Inter (If b ss1 ss2) s) 
+ | bVal b s = Inter ss1 s
+-- B[b]s = ff
+sosStm (Inter (If b ss1 ss2) s) 
+ | not (bVal b s) = Inter ss2 s
 
 -- while b do s
-sosStm (Inter w@(While b s1) s) = Inter (If b (Comp s1 w) Skip) s
+
+sosStm (Inter (While b ss) s) = Inter (If b (Comp ss (While b ss)) Skip) s
 
 -- repeat s until b
--- B[b]s == ff
-sosStm (Inter (Repeat ss b) s)
-    | not (bVal b s) = sosStm (Inter ss s)
--- B[b]s == tt
-sosStm (Inter (Repeat ss b) s)
-    | (bVal b s) = Final s
+
+sosStm (Inter (Repeat ss b) s) = Inter (Comp ss (If b Skip (Repeat ss b))) s
 
 -- for x a1 to a2 s
---a1 < a2
-sosStm (Inter (For v a1 a2 stm) s)
-    |   aVal (V v) s < aVal a2 s = Inter (Comp stm (For v a1 a2 stm)) s'
-        where
-            s' = update s (v :=>: (aVal (V v) s + 1))
-            
---a1 == a2
-sosStm (Inter (For v a1 a2 stm) s)
-    |   aVal (V v) s == aVal a2 s = Inter stm s
 
---a1 > a2
-sosStm (Inter (For v a1 a2 stm) s)
-    |   aVal (V v) s > aVal a2 s = Final s
+sosStm (Inter (For x a1 a2 ss) s) = Inter (If (Leq a1 a2) (Comp (Ass x a1) (For x (Add v1 (N "1")) v2 ss)) Skip ) s
+    where 
+        v1 = N ( show (aVal a1 s))
+        v2 = N ( show (aVal a2 s))
 
+-- Do S While b
+
+sosStm (Inter (DoWhile ss b) s) = Inter (Comp ss (If b (DoWhile ss b) Skip)) s
 
 -- abort
-sosStm (Inter stm s) = Stuck stm s
 
+sosStm (Inter stm s) = Stuck stm s

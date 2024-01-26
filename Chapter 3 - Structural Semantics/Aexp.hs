@@ -15,6 +15,7 @@ data  Aexp  =  N NumLit
             |  Add Aexp Aexp
             |  Mult Aexp Aexp
             |  Sub Aexp Aexp
+            |  Div Aexp Aexp
             deriving (Show, Eq)
 
 ---------------------------------------------------------------------
@@ -30,3 +31,5 @@ aVal (V x) s        =  s x
 aVal (Add a1 a2) s  =  aVal a1 s + aVal a2 s
 aVal (Mult a1 a2) s =  aVal a1 s * aVal a2 s
 aVal (Sub a1 a2) s  =  aVal a1 s - aVal a2 s
+aVal (Div a1 a2) s = if (aVal a2 s) == 0 then error "Div por cero" 
+                  else div (aVal a1 s) (aVal a2 s) 
