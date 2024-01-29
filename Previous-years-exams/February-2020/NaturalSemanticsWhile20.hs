@@ -237,19 +237,17 @@ nsStm envV (Inter (Block dv ss) sto) = Final sto''
    Define la semántica natural de la selección no determinista (no es
    necesario implementarla):
 
-   [if_ND_ns]
+   [if_fi_ns]
    B[b]s == tt
-                    < S0, s > -> s' 
-               -------------------------  
-                 < if Gs fi, s > -> s'
+                   < S or (if Gs fi), s > -> s' 
+               -----------------------------------  
+                 < (if b -> S; G​s fi), s > -> s'
 
-               where G​s​ ::= b -> S; G​s
-               and S0 = no_det_elecc Gs
    
-   [if_ND_ns]
+   [if_fi_ns]
    B[b]s == ff
-                  
-               ----------------------------- where Gs ::= ε
-                  < if Gs fi, s > -> error 
+                     < (if Gs fi), s > -> s'
+               ------------------------------------ 
+                  < (if b -> S; G​s fi), s > -> s'
   
 -}
